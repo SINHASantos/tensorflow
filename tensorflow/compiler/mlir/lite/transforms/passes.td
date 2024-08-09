@@ -147,10 +147,7 @@ def LiftTfliteFlexOpsPass : Pass<"tfl-lift-tflite-flex-ops", "mlir::func::FuncOp
 def LowerStaticTensorListPass : Pass<"tfl-lower-static-tensor-list", "mlir::ModuleOp"> {
   let summary = "Lower TensorList ops within TensorFlow Lite dialect.";
   let constructor = "CreateLowerStaticTensorListPass()";
-  let dependentDialects = ["TFL::TensorFlowLiteDialect",
-    "quant::QuantizationDialect",
-    "quantfork::QuantizationForkDialect"
-  ];
+  let dependentDialects = ["TFL::TensorFlowLiteDialect"];
   let options = [
       Option<"allow_tensorlist_pass_through_", "allow-tensorlist-pass-through",
              "bool", "false",
@@ -478,3 +475,7 @@ def PushTransposeThroughEwisePass : Pass<"push-transpose-through-ewise", "mlir::
   let dependentDialects = ["TFL::TensorFlowLiteDialect"];
 }
 
+def UnfreezeMutableGlobalTensorsPass : Pass<"unfreeze-mutable-global-tensors", "mlir::ModuleOp"> {
+  let summary = "Pass to unfreeze mutable global tensor ops";
+  let constructor = "CreateUnfreezeMutableGlobalTensorsPass()";
+}

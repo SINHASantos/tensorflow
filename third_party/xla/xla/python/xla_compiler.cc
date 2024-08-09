@@ -396,6 +396,27 @@ void DefRepeatedProperty(nb::class_<T>& cls, const char* name,
       });
 }
 
+template <typename T, typename Container>
+void DefRepeatedEnumProperty(nb::class_<T>& cls, const char* name,
+                             Container* (T::*getter)()) {
+  cls.def_prop_rw(
+      name,
+      [getter](T& obj) {
+        Container* elems = (obj.*getter)();
+        std::vector<typename Container::value_type> result;
+        result.reserve(elems->size());
+        std::copy(elems->begin(), elems->end(), std::back_inserter(result));
+        return result;
+      },
+      [getter](T& obj, nb::sequence new_elems) {
+        Container* elems = (obj.*getter)();
+        elems->Clear();
+        for (nb::handle e : new_elems) {
+          elems->Add(nb::cast<int>(e.attr("value")));
+        }
+      });
+}
+
 }  // namespace
 
 void BuildXlaCompilerSubmodule(nb::module_& m) {
@@ -1252,9 +1273,13 @@ void BuildXlaCompilerSubmodule(nb::module_& m) {
           [](ExecutableBuildOptions& options, std::vector<bool> values) {
             absl::InlinedVector<bool, 1> v(values.begin(), values.end());
             options.set_allow_spmd_sharding_propagation_to_output(v);
-          });
+          })
+      .def_prop_rw("use_shardy_partitioner",
+                   &ExecutableBuildOptions::use_shardy_partitioner,
+                   &ExecutableBuildOptions::set_use_shardy_partitioner);
 
-  nb::enum_<OpSharding::Type> op_sharding_type(m, "OpSharding_Type");
+  nb::enum_<OpSharding::Type> op_sharding_type(m, "OpSharding_Type",
+                                               nb::is_arithmetic());
   op_sharding_type.value("REPLICATED", OpSharding::REPLICATED)
       .value("MAXIMAL", OpSharding::MAXIMAL)
       .value("MANUAL", OpSharding::MANUAL)
@@ -1322,8 +1347,8 @@ void BuildXlaCompilerSubmodule(nb::module_& m) {
                       &xla::OpSharding::mutable_iota_transpose_perm);
   DefRepeatedProperty(op_sharding, "tuple_shardings",
                       &xla::OpSharding::mutable_tuple_shardings);
-  DefRepeatedProperty(op_sharding, "last_tile_dims",
-                      &xla::OpSharding::mutable_last_tile_dims);
+  DefRepeatedEnumProperty(op_sharding, "last_tile_dims",
+                          &xla::OpSharding::mutable_last_tile_dims);
 
   nb::class_<HloSharding> hlo_sharding(m, "HloSharding");
   hlo_sharding
