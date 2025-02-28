@@ -195,7 +195,15 @@ void TileOp::print(OpAsmPrinter& p) {
 }
 
 LogicalResult TileOp::verify() {
-  // TODO(b/396112896): Implement this.
+  if (getTensor().getType().getRank() == 0) {
+    return emitError("cannot tile a 0-d tensor");
+  }
+  auto tensor_rank = getTensor().getType().getRank();
+  if (tensor_rank != getOffsets().size() || tensor_rank != getSizes().size() ||
+      tensor_rank != getStrides().size())
+    return emitError(
+        "mismatch between tensor rank and one or more of "
+        "offsets/sizes/strides");
   return success();
 }
 
@@ -244,7 +252,11 @@ void ExtractOp::print(OpAsmPrinter& p) {
 }
 
 LogicalResult ExtractOp::verify() {
-  // TODO(b/396112896): Implement this.
+  if (getResult().getType().getRank() == 0) {
+    return emitError("cannot extract a 0-d tensor");
+  }
+  if (getSrc().getType().getRank() != getOffsets().size())
+    return emitError("source tensor rank does not match number of offsets");
   return success();
 }
 
@@ -296,7 +308,12 @@ void InsertOp::print(OpAsmPrinter& p) {
 }
 
 LogicalResult InsertOp::verify() {
-  // TODO(b/396112896): Implement this.
+  if (getSrc().getType().getRank() == 0) {
+    return emitError("cannot insert a 0-d tensor");
+  }
+  if (getDst().getType().getRank() != getOffsets().size())
+    return emitError(
+        "destination tensor rank does not match number of offsets");
   return success();
 }
 

@@ -17,10 +17,12 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "tensorflow/lite/experimental/litert/c/litert_common.h"
@@ -29,10 +31,10 @@
 #include "tensorflow/lite/experimental/litert/cc/litert_buffer_ref.h"
 #include "tensorflow/lite/experimental/litert/cc/litert_expected.h"
 #include "tensorflow/lite/experimental/litert/cc/litert_model.h"
+#include "tensorflow/lite/experimental/litert/compiler/plugin/compiler_flags.h"
 #include "tensorflow/lite/experimental/litert/core/model/model.h"
 #include "tensorflow/lite/experimental/litert/vendors/c/litert_compiler_plugin.h"
 #include "tensorflow/lite/experimental/litert/vendors/c/litert_compiler_plugin_api.h"
-#include "tensorflow/lite/experimental/litert/vendors/cc/litert_compiler_plugin.h"
 
 // C++ wrappers and high-level functions for managing compiler plugins
 // and applying them to models.
@@ -191,6 +193,25 @@ struct ApplyPluginsResult {
 Expected<ApplyPluginsResult> ApplyPlugins(
     LiteRtEnvironment environment, LiteRtModel model,
     LiteRtHwAcceleratorSet selected_hw_accelerators);
+
+// Composite Op util.
+
+// List of composite op names that are ignored during partitioning.
+// clang-format off
+inline constexpr absl::string_view kIgnoredCompositeOpNames[] = {
+    "odml.rms_norm"
+};
+// clang-format on
+
+// Struct to hold LiteRt composite ops.
+struct CompositeInfo {
+  LiteRtOp composite_op;
+  std::string composite_name;
+  int decomposition_subgraph_index;
+};
+
+// Returns the composite info for the given op if it is a composite op.
+std::optional<CompositeInfo> GetCompositeInfo(const LiteRtOp& op);
 
 }  // namespace litert::internal
 

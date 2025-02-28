@@ -84,6 +84,7 @@ typedef enum {
   kLiteRtStatusErrorNotFound = 6,
   kLiteRtStatusErrorTimeoutExpired = 7,
   kLiteRtStatusErrorWrongVersion = 8,
+  kLiteRtStatusErrorUnknown = 9,
 
   // File and loading related errors.
   kLiteRtStatusErrorFileIO = 500,
@@ -121,6 +122,14 @@ typedef int LiteRtHwAcceleratorSet;
 
 // For indexing into LiteRT collections or counting LiteRT things.
 typedef size_t LiteRtParamIndex;
+
+#if defined(_WIN32)
+// Provides posix_memalign() missing in Windows.
+#include <errno.h>
+
+#define posix_memalign(p, a, s) \
+  (((*(p)) = _aligned_malloc((s), (a))), *(p) ? 0 : errno)
+#endif  // defined(_WIN32)
 
 #ifdef __cplusplus
 }

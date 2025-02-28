@@ -1,4 +1,4 @@
-"""Build rules for XLA testing."""
+"""Build rules for XLA testing. This file is only used for the OSS build."""
 
 load("//xla:xla.bzl", "xla_cc_test")
 load("//xla/tests:plugin.bzl", "plugins")
@@ -6,6 +6,7 @@ load(
     "//xla/tsl/platform:build_config_root.bzl",
     "tf_gpu_tests_tags",
 )
+load("//xla/tsl/platform/default:build_config.bzl", "strict_cc_test")
 
 # Possible backend values for the GPU family.
 NVIDIA_GPU_BACKENDS = [
@@ -191,9 +192,12 @@ def xla_test(
         backend_tags = {},
         backend_args = {},
         backend_kwargs = {},
+        # Inside Google, we link statically to catch duplicate main() definitions.
+        # However, this increases the size of the test binary, which breaks Nvidia's build.
+        # Therefore we use dynamic linking outside Google.
         linkstatic = False,
         **kwargs):
-    """Generates cc_test targets for the given XLA backends.
+    """Generates strict_cc_test targets for the given XLA backends.
 
     This rule generates a cc_test target for one or more XLA backends. The arguments
     are identical to cc_test with two additions: 'backends' and 'backend_args'.
@@ -259,10 +263,10 @@ def xla_test(
       backend_args: A dict mapping backend name to list of additional args to
         use for that target.
       backend_kwargs: A dict mapping backend name to list of additional keyword
-        arguments to pass to native.cc_test. Only use for kwargs that don't have a
+        arguments to pass to strict_cc_test. Only use for kwargs that don't have a
         dedicated argument, like setting per-backend flaky or timeout attributes.
       linkstatic: Whether to link the test statically.
-      **kwargs: Additional keyword arguments to pass to native.cc_test.
+      **kwargs: Additional keyword arguments to pass to strict_cc_test.
     """
 
     test_names = []
@@ -371,7 +375,12 @@ def xla_test(
     if test_names:
         native.test_suite(name = name, tags = tags + ["manual"], tests = test_names)
     else:
-        native.cc_test(name = name, deps = ["@com_google_googletest//:gtest_main"], linkstatic = linkstatic)
+        strict_cc_test(
+            name = name,
+            deps = ["@com_google_googletest//:gtest_main"],
+            linkstatic = linkstatic,
+            **kwargs
+        )
 
 def xla_test_library(
         name,

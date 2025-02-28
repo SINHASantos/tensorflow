@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("//tensorflow/lite/experimental/litert/build_common:litert_build_defs.bzl", "gtest_main_no_heapcheck_deps")
-load("//tensorflow/lite/experimental/litert/build_common:special_rule.bzl", "gles_deps", "gles_linkopts")
+load("//tensorflow/lite/experimental/litert/build_common:special_rule.bzl", "gles_deps", "gles_linkopts", "lite_rt_friends")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
@@ -30,7 +30,6 @@ cc_library(
     ],
     deps = [
         "//tensorflow/lite/experimental/litert/c:litert_common",
-        "//tensorflow/lite/experimental/litert/c:litert_logging",
         "//tensorflow/lite/experimental/litert/cc:litert_expected",
     ],
 )
@@ -159,6 +158,9 @@ cc_library(
     name = "external_litert_buffer_context",
     srcs = ["external_litert_buffer_context.cc"],
     hdrs = ["external_litert_buffer_context.h"],
+    visibility = [
+        "//tensorflow/lite/experimental/litert:__subpackages__",
+    ] + lite_rt_friends(),
     deps = [
         ":tfl_utils",
         "//tensorflow/lite/c:c_api",
@@ -201,19 +203,20 @@ cc_library(
         "//tensorflow/lite/experimental/litert/cc:litert_buffer_ref",
         "//tensorflow/lite/experimental/litert/cc:litert_event",
         "//tensorflow/lite/experimental/litert/cc:litert_expected",
+        "//tensorflow/lite/experimental/litert/cc:litert_macros",
+        "//tensorflow/lite/experimental/litert/cc:litert_model",
         "//tensorflow/lite/experimental/litert/cc:litert_tensor_buffer",
         "//tensorflow/lite/experimental/litert/cc:litert_tensor_buffer_requirements",
         "//tensorflow/lite/experimental/litert/compiler/plugin:compiler_plugin",
+        "//tensorflow/lite/experimental/litert/core:accelerator_model_compilation_data",
         "//tensorflow/lite/experimental/litert/core:build_stamp",
         "//tensorflow/lite/experimental/litert/core:environment",
         "//tensorflow/lite/experimental/litert/core/model",
-        "//tensorflow/lite/experimental/litert/core/model:model_serialize",
         "//tensorflow/lite/experimental/litert/runtime/dispatch:dispatch_delegate",
         "//tensorflow/lite/kernels:builtin_ops",
         "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
     ],

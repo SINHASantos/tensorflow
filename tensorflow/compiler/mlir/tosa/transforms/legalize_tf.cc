@@ -169,12 +169,25 @@ LogicalResult ConvertTFReluOp::matchAndRewrite(
   // Not a tensor output
   if (!output_type) return failure();
 
+  auto element_type = output_type.getElementType();
+  if (auto quant_type =
+          dyn_cast<mlir::quant::UniformQuantizedType>(element_type)) {
+    element_type = quant_type.getStorageType();
+  }
+
+  mlir::Attribute min_val, max_val;
+  if (element_type.isa<mlir::FloatType>()) {
+    min_val = rewriter.getFloatAttr(element_type, 0.0f);
+    max_val =
+        rewriter.getFloatAttr(element_type, std::numeric_limits<float>::max());
+  } else {
+    min_val = rewriter.getIntegerAttr(element_type, 0);
+    max_val = rewriter.getIntegerAttr(element_type,
+                                      std::numeric_limits<int32_t>::max());
+  }
+
   CreateReplaceOpAndInfer<tosa::ClampOp>(
-      rewriter, op, output_type, tf_relu_op.getFeatures(),
-      rewriter.getI64IntegerAttr(0),
-      rewriter.getI64IntegerAttr(std::numeric_limits<int32_t>::max()),
-      rewriter.getF32FloatAttr(0.0f),
-      rewriter.getF32FloatAttr(std::numeric_limits<float>::max()));
+      rewriter, op, output_type, tf_relu_op.getFeatures(), min_val, max_val);
   return success();
 }
 
@@ -187,10 +200,23 @@ LogicalResult ConvertTFRelu6Op::matchAndRewrite(
   // Not a tensor output
   if (!output_type) return failure();
 
+  auto element_type = output_type.getElementType();
+  if (auto quant_type =
+          dyn_cast<mlir::quant::UniformQuantizedType>(element_type)) {
+    element_type = quant_type.getStorageType();
+  }
+
+  mlir::Attribute min_val, max_val;
+  if (element_type.isa<mlir::FloatType>()) {
+    min_val = rewriter.getFloatAttr(element_type, 0.0f);
+    max_val = rewriter.getFloatAttr(element_type, 6.0f);
+  } else {
+    min_val = rewriter.getIntegerAttr(element_type, 0);
+    max_val = rewriter.getIntegerAttr(element_type, 6);
+  }
+
   CreateReplaceOpAndInfer<tosa::ClampOp>(
-      rewriter, op, output_type, tf_relu6_op.getFeatures(),
-      rewriter.getI64IntegerAttr(0), rewriter.getI64IntegerAttr(6),
-      rewriter.getF32FloatAttr(0.0f), rewriter.getF32FloatAttr(6.0f));
+      rewriter, op, output_type, tf_relu6_op.getFeatures(), min_val, max_val);
   return success();
 }
 
@@ -692,8 +718,9 @@ LogicalResult ConvertTFReshapeOp::matchAndRewrite(
   }
   DenseI64ArrayAttr shape_attr = rewriter.getDenseI64ArrayAttr(shape_vals);
 
+  auto shape_value = getTosaConstShape(rewriter, op->getLoc(), shape_vals);
   CreateReplaceOpAndInfer<tosa::ReshapeOp>(
-      rewriter, op, output_type, tf_reshape_op.getTensor(), shape_attr);
+      rewriter, op, output_type, tf_reshape_op.getTensor(), shape_value);
   return success();
 }
 
@@ -1011,16 +1038,12 @@ LogicalResult ConvertTFConv2DBackpropInputOp::matchAndRewrite(
   a1_transpose_dims.push_back(filter_shape[0]);
   a1_transpose_dims.push_back(filter_shape[1]);
   a1_transpose_dims.push_back(filter_shape[3]);
-  std::optional<Value> a1_filter_transpose_perm = getConstTensor<int32_t>(
-      rewriter, op, /*vec=*/{2, 0, 1, 3}, /*shape=*/{4});
-
-  if (!a1_filter_transpose_perm) return failure();
 
   auto a1_filter_transpose_op = CreateOpAndInfer<tosa::TransposeOp>(
       rewriter, op->getLoc(),
       tensorflow::GetTypeFromTFTensorShape(ArrayRef<int64_t>(a1_transpose_dims),
                                            filter_type.getElementType()),
-      tf_conv_op.getFilter(), a1_filter_transpose_perm.value());
+      tf_conv_op.getFilter(), rewriter.getDenseI32ArrayAttr({2, 0, 1, 3}));
 
   DenseI64ArrayAttr stride;
   DenseI64ArrayAttr outpad;
@@ -1568,9 +1591,20 @@ LogicalResult ConvertTFTransposeOp::matchAndRewrite(
     return failure();
   }
 
-  CreateReplaceOpAndInfer<tosa::TransposeOp>(rewriter, op, output_type,
-                                             tf_transpose_op.getX(),
-                                             tf_transpose_op.getPerm());
+  // Get the constant values for perm input
+  ElementsAttr permsAttrElems;
+  if (!matchPattern(tf_transpose_op.getPerm(), m_Constant(&permsAttrElems))) {
+    return rewriter.notifyMatchFailure(op, "perm value is not constant");
+  }
+
+  SmallVector<int32_t> perms;
+  for (auto v : permsAttrElems.getValues<APInt>()) {
+    perms.push_back(v.getSExtValue());
+  }
+
+  CreateReplaceOpAndInfer<tosa::TransposeOp>(
+      rewriter, op, output_type, tf_transpose_op.getX(),
+      rewriter.getDenseI32ArrayAttr(perms));
 
   return success();
 }
@@ -1896,21 +1930,24 @@ LogicalResult ConvertTFMatMulOp::matchAndRewrite(
 
   // Need to reshape input and output since TOSA matmul only supports
   // [N, H, C] * [N, C, W] -> [N, H, W].
+  auto batch_a_shape_value = getTosaConstShape(rewriter, op->getLoc(), batch_a_shape);
   auto op1_reshape_a = CreateOpAndInfer<tosa::ReshapeOp>(
       rewriter, op->getLoc(), batch_a_type, tf_matmul_op.getA(),
-      rewriter.getDenseI64ArrayAttr(batch_a_shape));
+      batch_a_shape_value);
 
+  auto batch_b_shape_value = getTosaConstShape(rewriter, op->getLoc(), batch_b_shape);
   auto op2_reshape_b = CreateOpAndInfer<tosa::ReshapeOp>(
       rewriter, op->getLoc(), batch_b_type, tf_matmul_op.getB(),
-      rewriter.getDenseI64ArrayAttr(batch_b_shape));
+      batch_b_shape_value);
 
   auto op3_matmul_op1_op2 = CreateOpAndInfer<tosa::MatMulOp>(
       rewriter, op->getLoc(), batch_output_type, op1_reshape_a.getResult(),
       op2_reshape_b.getResult());
 
+  auto output_shape_value = getTosaConstShape(rewriter, op->getLoc(), output_type.getShape());
   CreateReplaceOpAndInfer<tosa::ReshapeOp>(
       rewriter, op, output_type, op3_matmul_op1_op2.getResult(),
-      rewriter.getDenseI64ArrayAttr(output_type.getShape()));
+      output_shape_value);
 
   return success();
 }
@@ -2417,21 +2454,24 @@ LogicalResult ConvertTFBatchMatMulV2Op::matchAndRewrite(
     RankedTensorType rank3_output_type = tensorflow::GetTypeFromTFTensorShape(
         rank3_output_shape, output_type.getElementType());
 
+    auto rank3_x_shape_value = getTosaConstShape(rewriter, op->getLoc(), rank3_x_shape);
     auto op1_reshape_x = CreateOpAndInfer<tosa::ReshapeOp>(
         rewriter, op->getLoc(), rank3_x_type, tf_batch_matmul_op.getX(),
-        rewriter.getDenseI64ArrayAttr(rank3_x_shape));
+        rank3_x_shape_value);
 
+    auto rank3_y_shape_value = getTosaConstShape(rewriter, op->getLoc(), rank3_y_shape);
     auto op2_reshape_y = CreateOpAndInfer<tosa::ReshapeOp>(
         rewriter, op->getLoc(), rank3_y_type, tf_batch_matmul_op.getY(),
-        rewriter.getDenseI64ArrayAttr(rank3_y_shape));
+        rank3_y_shape_value);
 
     auto op3_matmul_op1_op2 = CreateOpAndInfer<tosa::MatMulOp>(
         rewriter, op->getLoc(), rank3_output_type, op1_reshape_x.getResult(),
         op2_reshape_y.getResult());
 
+    auto output_shape_value = getTosaConstShape(rewriter, op->getLoc(), output_type.getShape());
     CreateReplaceOpAndInfer<tosa::ReshapeOp>(
         rewriter, op, output_type, op3_matmul_op1_op2.getResult(),
-        rewriter.getDenseI64ArrayAttr(output_type.getShape()));
+        output_shape_value);
   }
   return success();
 }

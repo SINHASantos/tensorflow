@@ -7,7 +7,7 @@ load("//xla/tsl/platform:rules_cc.bzl", "cc_library")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
-    default_visibility = [":friends"],
+    default_visibility = internal_visibility([":friends"]),
     licenses = ["notice"],
 )
 
@@ -150,6 +150,7 @@ cc_library(
 xla_cc_test(
     name = "object_pool_test",
     srcs = ["object_pool_test.cc"],
+    shuffle_tests = False,
     deps = [
         ":object_pool",
         "//xla/tsl/platform:env",

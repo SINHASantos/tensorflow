@@ -33,6 +33,7 @@ cc_library(
         "@local_xla//xla/tsl/profiler/utils:tf_op_utils",
         "@local_xla//xla/tsl/profiler/utils:tf_xplane_visitor",
         "@local_xla//xla/tsl/profiler/utils:timespan",
+        "@local_xla//xla/tsl/profiler/utils:xplane_schema",
         "@local_xla//xla/tsl/profiler/utils:xplane_utils",
     ],
 )
@@ -81,10 +82,9 @@ cc_library(
         "//tensorflow/core/profiler/protobuf:hardware_types_proto_cc",
         "//tensorflow/core/profiler/protobuf:op_metrics_proto_cc",
         "//tensorflow/core/profiler/protobuf:op_stats_proto_cc",
-        "//tensorflow/core/profiler/utils:math_utils",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/strings",
-        "@local_xla//xla/tsl/profiler/utils:device_utils",
+        "@local_xla//xla/tsl/profiler/utils:math_utils",
     ],
 )
 
@@ -293,7 +293,6 @@ cc_library(
         "//tensorflow/core/profiler/utils:diagnostics",
         "//tensorflow/core/profiler/utils:event_span",
         "//tensorflow/core/profiler/utils:html_utils",
-        "//tensorflow/core/profiler/utils:math_utils",
         "//tensorflow/core/profiler/utils:op_metrics_db_utils",
         "//tensorflow/core/profiler/utils:tpu_step_breakdown_utils",
         "//tensorflow/core/profiler/utils:tpu_step_details_utils",
@@ -470,10 +469,12 @@ tf_cc_test(
         "//tensorflow/core/profiler/utils:xplane_schema",
         "//tensorflow/core/profiler/utils:xplane_test_utils",
         "//tensorflow/core/profiler/utils:xplane_visitor",
+        "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",
         "@local_tsl//tsl/profiler/protobuf:xplane_proto_cc",
         "@local_xla//xla/tsl/profiler/convert:xla_op_utils",
         "@local_xla//xla/tsl/profiler/utils:tf_xplane_visitor",
+        "@local_xla//xla/tsl/profiler/utils:xplane_schema",
     ],
 )
 
@@ -936,7 +937,7 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        # copybara:uncomment(b/360874576) "//tensorflow/compiler/mlir/lite/experimental/google/tooling/google:direct_hlo_to_json_graph_convert",
+        # copybara:uncomment(b/360874576) "//tensorflow/compiler/mlir/lite/experimental/google/tooling/hlo_adapter:direct_hlo_to_json_graph_convert",
         "@local_xla//xla/hlo/ir:hlo",
         "@local_xla//xla/service:hlo_graph_dumper",
         "@local_xla//xla/service:hlo_proto_cc",
