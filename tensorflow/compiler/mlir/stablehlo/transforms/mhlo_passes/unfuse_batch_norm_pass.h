@@ -1,4 +1,4 @@
-/* Copyright 2025 The OpenXLA Authors.
+/* Copyright 2025 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,11 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef XLA_PYTHON_VERSION_H_
-#define XLA_PYTHON_VERSION_H_
+#ifndef TENSORFLOW_COMPILER_MLIR_STABLEHLO_TRANSFORMS_MHLO_PASSES_UNFUSE_BATCH_NORM_PASS_H_
+#define TENSORFLOW_COMPILER_MLIR_STABLEHLO_TRANSFORMS_MHLO_PASSES_UNFUSE_BATCH_NORM_PASS_H_
 
-// An increasing version number to protect jax code against breaking changes.
-// In JAX, reference this via jax._src.lib.ifrt_version.
-#define JAX_IFRT_VERSION_NUMBER 8
+#include <memory>
 
-#endif  // XLA_PYTHON_VERSION_H_
+#include "mlir/Pass/Pass.h"  // from @llvm-project
+
+namespace mlir {
+namespace odml {
+
+// Unfuses MHLO batch norm inference op into arithmetic ops.
+std::unique_ptr<Pass> createUnfuseBatchNormPass();
+
+}  // namespace odml
+}  // namespace mlir
+
+#endif  // TENSORFLOW_COMPILER_MLIR_STABLEHLO_TRANSFORMS_MHLO_PASSES_UNFUSE_BATCH_NORM_PASS_H_

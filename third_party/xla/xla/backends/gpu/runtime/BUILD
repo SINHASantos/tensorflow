@@ -572,9 +572,8 @@ xla_cc_test(
         ":thunk",
         ":thunk_proto_cc",
         "//xla/service:buffer_assignment",
-        "//xla/tsl/lib/core:status_test_util",
         "//xla/tsl/platform:statusor",
-        "@com_google_absl//absl/strings:string_view",
+        "//xla/tsl/util/proto:proto_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -1644,6 +1643,7 @@ cc_library(
         "//xla/stream_executor/gpu:all_reduce_kernel",
         "//xla/stream_executor/gpu:gpu_kernel_registry",
         "//xla/tsl/platform:statusor",
+        "//xla/tsl/util:safe_reinterpret_cast",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
